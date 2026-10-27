@@ -1,0 +1,53 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+PortSystem          1.0
+
+name                rtk
+version             1.1.0
+categories          sysutils
+supported_archs     x86_64 arm64
+maintainers         nomaintainer
+installs_libs       no
+description         Rust Token Killer command output proxy
+long_description    RTK filters command output to reduce token usage by coding agents. \
+                    This local port installs the official prebuilt release binary.
+homepage            https://www.rtk-ai.app
+
+# The filtering engine is BUSL-1.1; do not redistribute MacPorts archives.
+license             {Apache-2 Restrictive}
+archive_sites
+master_sites        https://github.com/rtk-ai/rtk/releases/download/v${version}
+
+if {${configure.build_arch} eq "arm64"} {
+    distname        rtk-aarch64-apple-darwin
+    checksums       rmd160  7cf47cf098b7c8445224c976f90a205c6fd47be8 \
+                    sha256  8da773b0954cf90b115ec95c4e4eb420f04c39de233c5db102246a6caf073ba7 \
+                    size    5929243
+} else {
+    distname        rtk-x86_64-apple-darwin
+    checksums       rmd160  272bd162378ed58067c785fc34e1ad2de65b311e \
+                    sha256  1e23e8b9542b58428e6409c49b1c3fb92c4c0d5125da72e80f002a46086a6c20 \
+                    size    6447453
+}
+
+use_configure       no
+universal_variant   no
+extract.mkdir       yes
+build               {}
+
+destroot {
+    xinstall -m 0755 ${worksrcpath}/rtk ${destroot}${prefix}/bin/rtk
+    xinstall -d ${destroot}${prefix}/share/doc/${name}
+    xinstall -m 0644 ${worksrcpath}/LICENSE ${worksrcpath}/LICENSE-ENGINE \
+        ${destroot}${prefix}/share/doc/${name}
+}
+
+test.run            yes
+test {
+    system "${worksrcpath}/rtk --version"
+    system "${worksrcpath}/rtk --help"
+}
+
+livecheck.type      regex
+livecheck.url       https://github.com/rtk-ai/rtk/releases/latest
+livecheck.regex     /rtk-ai/rtk/releases/tag/v(\[0-9.\]+)
