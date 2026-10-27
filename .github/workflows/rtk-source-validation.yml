@@ -1,0 +1,46 @@
+name: RTK source port validation
+on:
+  push:
+    branches: [validate/rtk-source]
+permissions:
+  contents: read
+jobs:
+  macports:
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: sysutils/rtk
+      - name: Install MacPorts
+        run: |
+          curl -fL --retry 3 https://github.com/macports/macports-base/releases/download/v2.12.7/MacPorts-2.12.7-15-Sequoia.pkg -o /tmp/MacPorts.pkg
+          echo '87b2e87ed7adc4aca947b42eb7ff991614cc0edfccb486237f2bbc75f28aae63  /tmp/MacPorts.pkg' | shasum -a 256 -c -
+          sudo installer -pkg /tmp/MacPorts.pkg -target /
+          sudo /opt/local/bin/port selfupdate
+      - name: Copy port to a readable directory
+        run: |
+          mkdir -p /Users/Shared/ports/sysutils/rtk
+          cp sysutils/rtk/Portfile /Users/Shared/ports/sysutils/rtk/Portfile
+          chmod -R a+rX /Users/Shared/ports
+      - name: Lint and build source port
+        run: |
+          /opt/local/bin/port -D /Users/Shared/ports/sysutils/rtk lint
+          sudo /opt/local/bin/port -v -D /Users/Shared/ports/sysutils/rtk destroot
+      - name: Run port tests
+        run: sudo /opt/local/bin/port -v -D /Users/Shared/ports/sysutils/rtk test
+      - name: Install and verify
+        run: |
+          sudo /opt/local/bin/port -v -D /Users/Shared/ports/sysutils/rtk install
+          /opt/local/bin/port installed rtk
+          /opt/local/bin/rtk --version
+          /opt/local/bin/rtk proxy /usr/bin/printf 'source-built RTK works\n'
+          test -s /opt/local/share/doc/rtk/LICENSE
+          test -s /opt/local/share/doc/rtk/LICENSE-ENGINE
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macports-rtk-build-logs
+          path: /opt/local/var/macports/logs/**/main.log
+          if-no-files-found: ignore
